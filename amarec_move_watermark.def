@@ -1,0 +1,4 @@
+﻿LIBRARY amarec_move_watermark
+
+EXPORTS
+	GetFilterTable @1
