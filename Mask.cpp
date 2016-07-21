@@ -130,9 +130,15 @@ static Mask kSmallMask(kSmallMaskWidth, kSmallMaskHeight, kSmallMaskPixelData, k
 
 Mask const* Mask::selectMask(int width, int height, int& leftMargin, int& bottomMargin)
 {
-	Mask* candidate = width >= 1024 ? &kLargeMask : &kSmallMask;
+    if (width <= 94) {
+        return nullptr;
+    } else if (height <= 46) {
+        return nullptr;
+    }
 
-	if (height < candidate->height_) {
+    Mask* candidate = width >= 1024 ? &kLargeMask : &kSmallMask;
+
+    if (height < candidate->height_) {
 		return nullptr;
 	} else {
         if (width >= 1024) {

@@ -1,3 +1,6 @@
 [submodule "ext/aviutl_plugin_sdk"]
 	path = ext/aviutl_plugin_sdk
 	url = https://github.com/kbinani/aviutl_plugin_sdk.git
+[submodule "ext/cpp-optparse"]
+	path = ext/cpp-optparse
+	url = https://github.com/weisslj/cpp-optparse.git
