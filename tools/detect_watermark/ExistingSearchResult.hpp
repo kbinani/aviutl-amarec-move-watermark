@@ -40,7 +40,7 @@ public:
             size.height_ = std::stoi(tokens[1]);
 
             if (minWidth_ <= size.width_ && size.width_ <= maxWidth_ &&
-                minHeight_ <= size.height_ && size.height_ <= maxHeight_) {
+                    minHeight_ <= size.height_ && size.height_ <= maxHeight_) {
                 existing_.insert(size);
             }
         }
@@ -97,7 +97,7 @@ public:
     bool queryAlreadyTested(Size const& size)
     {
         if (minWidth_ <= size.width_ && size.width_ <= minCompletedWidth_ &&
-            minHeight_ <= size.height_ && size.height_ <= minCompletedHeight_) {
+                minHeight_ <= size.height_ && size.height_ <= minCompletedHeight_) {
             return true;
         }
         auto it = existing_.find(size);

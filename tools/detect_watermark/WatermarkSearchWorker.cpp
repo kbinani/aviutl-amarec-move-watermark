@@ -66,14 +66,14 @@ void WatermarkSearchWorker::terminate()
 }
 
 
-std::shared_ptr<WatermarkSearchResult> WatermarkSearchWorker::findWatermark(size_t width, size_t height)
+std::shared_ptr<WatermarkSearchResult> WatermarkSearchWorker::findWatermark(int width, int height)
 {
     std::shared_ptr<WatermarkSearchResult> r = std::make_shared<WatermarkSearchResult>();
     r->size_.width_ = width;
     r->size_.height_ = height;
 
-    size_t const bytesPerPixel = 4;
-    size_t const scanlineSizeInBytes = width * bytesPerPixel;
+    int const bytesPerPixel = 4;
+    int const scanlineSizeInBytes = width * bytesPerPixel;
 
     BITMAPINFOHEADER inputFormat;
     ZeroMemory(&inputFormat, sizeof(inputFormat));
@@ -85,7 +85,7 @@ std::shared_ptr<WatermarkSearchResult> WatermarkSearchWorker::findWatermark(size
     inputFormat.biCompression = BI_RGB;
     inputFormat.biSizeImage = scanlineSizeInBytes * height;
 
-    DWORD const size = ICCompressGetFormat(compressor_, &inputFormat, nullptr);
+    DWORD const size = ICCompressGetFormatSize(compressor_, &inputFormat);
     if (size == 0 || (size & 0xFFFF0000) == 0xFFFF0000) {
         return r;
     }
@@ -115,20 +115,19 @@ std::shared_ptr<WatermarkSearchResult> WatermarkSearchWorker::findWatermark(size
     DWORD flags = 0;
     DWORD dwckid = 0;
 
-    DWORD result = ICCompress(
-        compressor_,
-        0, // dwFlags
-        outputFormat,
-        outputBuffer_.data(),
-        &inputFormat,
-        inputBuffer_.data(),
-        &dwckid,
-        &flags,
-        0, // lpFrameNum
-        0, // dwFrameSize
-        0, // dwQuality
-        nullptr, // lpbiPrev
-        nullptr); // lpPrev
+    DWORD result = ICCompress(compressor_,
+                              0, // dwFlags
+                              outputFormat,
+                              outputBuffer_.data(),
+                              &inputFormat,
+                              inputBuffer_.data(),
+                              &dwckid,
+                              &flags,
+                              0, // lpFrameNum
+                              0, // dwFrameSize
+                              0, // dwQuality
+                              nullptr, // lpbiPrev
+                              nullptr); // lpPrev
     if (result != ICERR_OK) {
         return r;
     }
@@ -152,9 +151,9 @@ std::shared_ptr<WatermarkSearchResult> WatermarkSearchWorker::findWatermark(size
 
     // Search left edge of watermark
     int left = -1;
-    for (size_t x = 0; x < width; ++x) {
+    for (int x = 0; x < width; ++x) {
         bool found = false;
-        for (size_t y = 0; y < height; ++y) {
+        for (int y = 0; y < height; ++y) {
             for (int j = 0; j < bytesPerPixel; ++j) {
                 int index = scanlineSizeInBytes * y + x * bytesPerPixel + j;
                 if (inputBuffer_[index] != (uint8_t)0xff) {
@@ -177,9 +176,9 @@ std::shared_ptr<WatermarkSearchResult> WatermarkSearchWorker::findWatermark(size
 
     // Search right edge of watermark
     int right = -1;
-    for (size_t x = width - 1; x >= 0; --x) {
+    for (int x = width - 1; x >= 0; --x) {
         bool found = false;
-        for (size_t y = 0; y < height; ++y) {
+        for (int y = 0; y < height; ++y) {
             for (int j = 0; j < bytesPerPixel; ++j) {
                 int index = scanlineSizeInBytes * y + x * bytesPerPixel + j;
                 if (inputBuffer_[index] != (uint8_t)0xff) {
@@ -202,9 +201,9 @@ std::shared_ptr<WatermarkSearchResult> WatermarkSearchWorker::findWatermark(size
 
     // Search top edge of watermark
     int top = -1;
-    for (size_t y = 0; y < height; ++y) {
+    for (int y = 0; y < height; ++y) {
         bool found = false;
-        for (size_t x = 0; x < width; ++x) {
+        for (int x = 0; x < width; ++x) {
             for (int j = 0; j < bytesPerPixel; ++j) {
                 int index = scanlineSizeInBytes * y + x * bytesPerPixel + j;
                 if (inputBuffer_[index] != (uint8_t)0xff) {
@@ -227,9 +226,9 @@ std::shared_ptr<WatermarkSearchResult> WatermarkSearchWorker::findWatermark(size
 
     // Search bottom edge of watermark
     int bottom = -1;
-    for (size_t y = height - 1; y >= 0; --y) {
+    for (int y = height - 1; y >= 0; --y) {
         bool found = false;
-        for (size_t x = 0; x < width; ++x) {
+        for (int x = 0; x < width; ++x) {
             for (int j = 0; j < bytesPerPixel; ++j) {
                 int index = scanlineSizeInBytes * y + x * bytesPerPixel + j;
                 if (inputBuffer_[index] != (uint8_t)0xff) {

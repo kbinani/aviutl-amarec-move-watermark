@@ -18,7 +18,7 @@ public:
 
     void terminate();
 
-    std::shared_ptr<WatermarkSearchResult> findWatermark(size_t width, size_t height);
+    std::shared_ptr<WatermarkSearchResult> findWatermark(int width, int height);
 
 public:
     static size_t const kMaxQueueLength = 64;

@@ -91,7 +91,9 @@ int main(int argc, char *argv[])
 
     if (numWorkers > 1) {
         for (unsigned i = 0; i < numWorkers; ++i) {
-            threads.emplace_back([](WatermarkSearchWorker* worker) { worker->run(); }, workers[i].get());
+            threads.emplace_back([](WatermarkSearchWorker* worker) {
+                worker->run();
+            }, workers[i].get());
         }
     }
 
@@ -99,40 +101,75 @@ int main(int argc, char *argv[])
     int const enqueUnitSize = WatermarkSearchWorker::kMaxQueueLength / 2;
 
     std::vector<std::shared_ptr<WatermarkSearchResult>> results;
-
     int index = 0;
-    for (int height = minHeight; height <= maxHeight; height += heightStep) {
-        for (int width = minWidth; width <= maxWidth; width += widthStep) {
-            Size size;
-            size.width_ = width;
-            size.height_ = height;
-            if (existing.queryAlreadyTested(size)) {
-                continue;
-            }
-            if (numWorkers > 1) {
-                queueBuffer.push_back(size);
-                if (queueBuffer.size() >= enqueUnitSize) {
-                    while (true) {
-                        bool const queued = workers[index]->enqueue(queueBuffer);
-                        index = (index + 1) % numWorkers;
-                        if (queued) {
-                            break;
-                        } else {
-                            std::this_thread::sleep_for(std::chrono::milliseconds(100));
-                        }
-                    }
-                    queueBuffer.clear();
-                }
 
-                for (unsigned i = 0; i < numWorkers; ++i) {
-                    workers[i]->drainResults(results);
-                    for (auto const& result : results) {
-                        result->print(handlerFCC, log);
+    auto enqueue = [=, &queueBuffer, &index, &workers, &log, &results](Size size) {
+        if (numWorkers > 1) {
+            queueBuffer.push_back(size);
+            if (queueBuffer.size() >= enqueUnitSize) {
+                while (true) {
+                    bool const queued = workers[index]->enqueue(queueBuffer);
+                    index = (index + 1) % numWorkers;
+                    if (queued) {
+                        break;
+                    } else {
+                        std::this_thread::sleep_for(std::chrono::milliseconds(100));
                     }
                 }
-            } else {
-                auto result = workers[0]->findWatermark(size.width_, size.height_);
-                result->print(handlerFCC, log);
+                queueBuffer.clear();
+            }
+
+            for (unsigned i = 0; i < numWorkers; ++i) {
+                workers[i]->drainResults(results);
+                for (auto const& result : results) {
+                    result->print(handlerFCC, log);
+                }
+            }
+        } else {
+            auto result = workers[0]->findWatermark(size.width_, size.height_);
+            result->print(handlerFCC, log);
+        }
+    };
+
+    int const imin = std::min(minWidth, minHeight);
+    int const imax = std::max(maxWidth, maxHeight);
+    for (int i = imin; i <= imax; ++i) {
+        std::cout << "\r" << i;
+        {
+            int h = i;
+            if ((h - minHeight) % heightStep == 0) {
+                for (int w = minWidth; w <= maxWidth; w += widthStep) {
+                    if (w == h) {
+                        continue;
+                    }
+                    if (w > i) {
+                        break;
+                    }
+                    Size size;
+                    size.width_ = w;
+                    size.height_ = h;
+                    if (existing.queryAlreadyTested(size)) {
+                        continue;
+                    }
+                    enqueue(size);
+                }
+            }
+        }
+        {
+            int w = i;
+            if ((w - minWidth) % widthStep == 0) {
+                for (int h = minHeight; h <= maxHeight; h += heightStep) {
+                    if (h > i) {
+                        break;
+                    }
+                    Size size;
+                    size.width_ = w;
+                    size.height_ = h;
+                    if (existing.queryAlreadyTested(size)) {
+                        continue;
+                    }
+                    enqueue(size);
+                }
             }
         }
     }
@@ -154,7 +191,7 @@ int main(int argc, char *argv[])
             }
         }
     }
-    
+
     if (numWorkers > 1) {
         for (unsigned i = 0; i < numWorkers; ++i) {
             workers[i]->terminate();

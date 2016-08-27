@@ -5,6 +5,7 @@
 #include <windows.h>
 #include <commctrl.h>
 
+#include <cassert>
 #include <cstdint>
 #include <cmath>
 

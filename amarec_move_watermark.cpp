@@ -7,7 +7,7 @@ EXTERN_C FILTER_DLL __declspec(dllexport)* __stdcall GetFilterTable()
 {
     static bool s_initialized = false;
     static FILTER_DLL s_filter;
-    static char* track_name[] = {"delta X", "delta Y"};
+    static char* track_name[] = { "delta X", "delta Y" };
     static int track_default[] = { 0, 0 };
     static int track_s[] = { 0, 0 };
     static int track_e[] = { 100, 100 };
@@ -51,69 +51,68 @@ BOOL func_proc(FILTER* fp, FILTER_PROC_INFO *fpip)
         return FALSE;
     }
     int const width = fpip->w;
-	int const height = fpip->h;
+    int const height = fpip->h;
 
     s_filtered_width = width;
     s_filtered_height = height;
 
     int bottomMargin, leftMargin;
-	Mask const* mask = Mask::selectMask(width, height, leftMargin, bottomMargin);
-	if (mask == nullptr) {
-		return TRUE;
-	}
+    Mask const* mask = Mask::selectMask(width, height, leftMargin, bottomMargin);
+    if (mask == nullptr) {
+        return TRUE;
+    }
 
     int const xoffset = leftMargin;
     int const yoffset = height - bottomMargin - mask->height_;
 
-	float r, g, b;
-	float recoveredR, recoveredG, recoveredB;
+    int minMaskY = std::max(0, -yoffset);
+    int maxMaskY = std::min(mask->height_ - 1, height - 1 - yoffset);
 
-	for (int maskY = 0; maskY < mask->height_; ++maskY) {
+    int minMaskX = std::max(0, -xoffset);
+    int maxMaskX = std::min(mask->width_ - 1, width - 1 - xoffset);
+
+    for (int maskY = minMaskY; maskY <= maxMaskY; ++maskY) {
         int const y = yoffset + maskY;
-        if (y < 0) {
-            continue;
-        } else if (height <= y) {
-            break;
-        }
-        for (int maskX = 0; maskX < mask->width_; ++maskX) {
-            int const x = xoffset + maskX;
-			if (width <= x) {
-				break;
-			}
-			if (0 <= x) {
-                PIXEL_YC *pixel = fpip->ycp_edit + y * fpip->max_w + x;
-                MaskPixel const* maskPtr = mask->pixelData_ + maskY * mask->width_ + maskX;
+        assert(0 <= y && y < height);
 
-                Colorspace::getRGBFromYCbCr(pixel->y, pixel->cb, pixel->cr, r, g, b);
-				mask->unmask(maskPtr, r, g, b, recoveredR, recoveredG, recoveredB);
-				Colorspace::getYCbCrFromRGB(recoveredR, recoveredG, recoveredB, pixel->y, pixel->cb, pixel->cr);
-			}
-		}
+        PIXEL_YC* pixel = fpip->ycp_edit + y * fpip->max_w + minMaskX + xoffset;
+        MaskPixel const* maskPtr = mask->pixelData_ + maskY * mask->width_ + minMaskX;
+
+        for (int maskX = minMaskX; maskX <= maxMaskX; ++maskX) {
+            float r, g, b;
+            Colorspace::getRGBFromYCbCr(pixel->y, pixel->cb, pixel->cr, r, g, b);
+            float recoveredR, recoveredG, recoveredB;
+            mask->unmask(maskPtr, r, g, b, recoveredR, recoveredG, recoveredB);
+            Colorspace::getYCbCrFromRGB(recoveredR, recoveredG, recoveredB, pixel->y, pixel->cb, pixel->cr);
+            ++pixel;
+            ++maskPtr;
+        }
     }
 
     int const xShift = fp->track[0];
     int const yShift = fp->track[1];
 
-    for (int maskY = 0; maskY < mask->height_; ++maskY) {
-        int const y = yoffset + maskY + yShift;
-        if (y < 0) {
-            continue;
-        } else if (height <= y) {
-            break;
-        }
-        for (int maskX = 0; maskX < mask->width_; ++maskX) {
-            int const x = xoffset + maskX + xShift;
-            if (width <= x) {
-                break;
-            }
-            if (0 <= x) {
-                PIXEL_YC *pixel = fpip->ycp_edit + y * fpip->max_w + x;
-                MaskPixel const* maskPtr = mask->pixelData_ + maskY * mask->width_ + maskX;
+    minMaskY = std::max(0, -yoffset - yShift);
+    maxMaskY = std::min(mask->height_ - 1, height - 1 - yoffset - yShift);
 
-                Colorspace::getRGBFromYCbCr(pixel->y, pixel->cb, pixel->cr, r, g, b);
-                mask->mask(maskPtr, r, g, b, recoveredR, recoveredG, recoveredB);
-                Colorspace::getYCbCrFromRGB(recoveredR, recoveredG, recoveredB, pixel->y, pixel->cb, pixel->cr);
-            }
+    minMaskX = std::max(0, -xoffset - xShift);
+    maxMaskX = std::min(mask->width_ - 1, width - 1 - xoffset - xShift);
+
+    for (int maskY = minMaskY; maskY <= maxMaskY; ++maskY) {
+        int const y = yoffset + maskY + yShift;
+        assert(0 <= y && y < height);
+
+        PIXEL_YC* pixel = fpip->ycp_edit + y * fpip->max_w + xoffset + minMaskX + xShift;
+        MaskPixel const* maskPtr = mask->pixelData_ + maskY * mask->width_ + minMaskX;
+
+        for (int maskX = minMaskX; maskX <= maxMaskX; ++maskX) {
+            float r, g, b;
+            Colorspace::getRGBFromYCbCr(pixel->y, pixel->cb, pixel->cr, r, g, b);
+            float recoveredR, recoveredG, recoveredB;
+            mask->mask(maskPtr, r, g, b, recoveredR, recoveredG, recoveredB);
+            Colorspace::getYCbCrFromRGB(recoveredR, recoveredG, recoveredB, pixel->y, pixel->cb, pixel->cr);
+            ++pixel;
+            ++maskPtr;
         }
     }
 
